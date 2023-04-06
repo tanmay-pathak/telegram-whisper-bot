@@ -3,6 +3,6 @@ services:
   telegram_bot:
     build: .
     container_name: telegram_bot
-    environment:
-      - TOKEN=YOUR_API_HERE
+    env_file:
+      - .env
     restart: always

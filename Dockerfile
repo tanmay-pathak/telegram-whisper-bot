@@ -5,7 +5,7 @@ WORKDIR /app
 # Setup Whisper.cpp
 RUN apt-get update && apt-get install -y git curl make gcc g++ ffmpeg
 RUN git clone https://github.com/ggerganov/whisper.cpp.git /app
-RUN /app/models/download-ggml-model.sh base
+RUN /app/models/download-ggml-model.sh small
 RUN make
 
 WORKDIR /app/bot
