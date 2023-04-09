@@ -13,15 +13,16 @@ logging.basicConfig(
 
 # Environment variables
 TOKEN = os.environ.get('TOKEN')
+ALLOWED_USERNAMES = [username.strip("'[ ]") for username in os.environ.get('USERNAMES').split(',')]
 
 # Functions
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(logging.INFO, 'Command /start entered.')
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Hi, I'm a bot. Send me voice notes and I will transcribe them for you!")
+    logging.log(logging.INFO, f'Command /start entered by {update.effective_chat.username}')
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Hi, I am Voice2Type bot. I can translate and transcribe voice notes for you. Send a voice note to start!")
 
 async def handle_voicenotes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(logging.INFO, 'Voice note received.')
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Voice note sent. Transcribing...")
+    logging.log(logging.INFO, f'Voice note received from  {update.effective_chat.username}')
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Voice note received. Transcribing...")
     await process_voice_note(update, context)
 
 async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -30,6 +31,7 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     downloaded_filename = await file.download_to_drive()
     path_to_downloaded_file = './{}'.format(downloaded_filename)
+    logging.log(logging.INFO, f'Downloaded file at {path_to_downloaded_file}')
 
     await transcribe_voice_note(path_to_downloaded_file)
     await send_transcription_to_user(path_to_downloaded_file, update, context)
@@ -50,12 +52,17 @@ async def send_transcription_to_user(path_to_file, update: Update, context: Cont
 
 async def delete_temp_files():
     for file in glob.glob('file_*.oga*'):
+        logging.log(logging.INFO, f'Deleting temp file: {file}')
         os.remove(file)
 
 
 async def handle_non_voice_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(logging.INFO, 'Non-voice note message received.')
+    logging.log(logging.INFO, f'Non-voice note message received from  {update.effective_chat.username}')
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops! I can only accept voice notes. Please try again! :)")
+
+async def handle_non_allowed_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(logging.INFO, f'Message received from non-allowed user = {update.effective_chat.username}')
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="You are not allowed to use this bot. Sorry!")
     
 if __name__ == '__main__':
     application = ApplicationBuilder().token(TOKEN).build()
@@ -65,7 +72,8 @@ if __name__ == '__main__':
 
     # Handlers
     application.add_handler(start_handler)
-    application.add_handler(MessageHandler(filters.VOICE, handle_voicenotes))
-    application.add_handler(MessageHandler(filters.ALL, handle_non_voice_notes))
+    application.add_handler(MessageHandler(filters.VOICE & filters.Chat(username=ALLOWED_USERNAMES), handle_voicenotes))
+    application.add_handler(MessageHandler(filters.ALL & filters.Chat(username=ALLOWED_USERNAMES), handle_non_voice_notes))
+    application.add_handler(MessageHandler(filters.ALL, handle_non_allowed_users))
 
     application.run_polling()
