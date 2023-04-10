@@ -20,9 +20,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(logging.INFO, f'Command /start entered by {update.effective_chat.username}')
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Hi, I am Voice2Type bot. I can translate and transcribe voice notes for you. Send a voice note to start!")
 
-async def handle_voicenotes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(logging.INFO, f'Voice note received from  {update.effective_chat.username}')
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Voice note received. Transcribing...")
+async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(logging.INFO, f'File received from  {update.effective_chat.username}')
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="File received. Converting, translating and transcribing...")
     await process_voice_note(update, context)
 
 async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,9 +56,9 @@ async def delete_temp_files():
         os.remove(file)
 
 
-async def handle_non_voice_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(logging.INFO, f'Non-voice note message received from  {update.effective_chat.username}')
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops! I can only accept voice notes. Please try again! :)")
+async def handle_unsupported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(logging.INFO, f'Unsupported file received from  {update.effective_chat.username}')
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops! I can only accept voice notes, videos or audio files. Please try again! :)")
 
 async def handle_non_allowed_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(logging.INFO, f'Message received from non-allowed user = {update.effective_chat.username}')
@@ -72,8 +72,8 @@ if __name__ == '__main__':
 
     # Handlers
     application.add_handler(start_handler)
-    application.add_handler(MessageHandler(filters.VOICE & filters.Chat(username=ALLOWED_USERNAMES), handle_voicenotes))
-    application.add_handler(MessageHandler(filters.ALL & filters.Chat(username=ALLOWED_USERNAMES), handle_non_voice_notes))
+    application.add_handler(MessageHandler((filters.VOICE | filters.AUDIO | filters.VIDEO) & filters.Chat(username=ALLOWED_USERNAMES), handle_supported_files))
+    application.add_handler(MessageHandler(filters.ALL & filters.Chat(username=ALLOWED_USERNAMES), handle_unsupported_files))
     application.add_handler(MessageHandler(filters.ALL, handle_non_allowed_users))
 
     application.run_polling()
