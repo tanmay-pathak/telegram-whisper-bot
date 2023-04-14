@@ -48,7 +48,7 @@ async def send_transcription_to_user(path_to_file, update: Update, context: Cont
     result.close()
     if not text:
         text = 'Could not transcribe. Please try again.'
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_to_message_id=update.message.message_id)
 
 async def delete_temp_files():
     for file in glob.glob('file_*.oga*'):
