@@ -22,7 +22,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(logging.INFO, f'File received from  {update.effective_chat.username}')
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="File received. Converting, translating and transcribing...")
+    await update.message.chat.send_action(action="typing")
     await process_voice_note(update, context)
 
 async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,7 +54,6 @@ async def delete_temp_files():
     for file in glob.glob('file_*.oga*'):
         logging.log(logging.INFO, f'Deleting temp file: {file}')
         os.remove(file)
-
 
 async def handle_unsupported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(logging.INFO, f'Unsupported file received from  {update.effective_chat.username}')
