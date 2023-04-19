@@ -4,6 +4,7 @@ import glob
 from subprocess import Popen, PIPE
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from gtts import gTTS
 
 # Setup
 logging.basicConfig(
@@ -24,6 +25,13 @@ async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_T
     logging.log(logging.INFO, f'File received from  {update.effective_chat.username}')
     await update.message.chat.send_action(action="typing")
     await process_voice_note(update, context)
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    logging.log(logging.INFO, f'Text {text} received from {update.effective_chat.username}')
+    await update.message.chat.send_action(action="record_audio")
+    gTTS(text).save("./file_elevenlabs.mp3")
+    await context.bot.send_voice(chat_id=update.effective_chat.id, voice="./file_elevenlabs.mp3", reply_to_message_id=update.message.message_id)
 
 async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_id = update.message.effective_attachment.file_id
@@ -72,6 +80,7 @@ if __name__ == '__main__':
     # Handlers
     application.add_handler(start_handler)
     application.add_handler(MessageHandler((filters.VOICE | filters.AUDIO | filters.VIDEO) & filters.Chat(username=ALLOWED_USERNAMES), handle_supported_files))
+    application.add_handler(MessageHandler((filters.TEXT) & filters.Chat(username=ALLOWED_USERNAMES), handle_text))
     application.add_handler(MessageHandler(filters.ALL & filters.Chat(username=ALLOWED_USERNAMES), handle_unsupported_files))
     application.add_handler(MessageHandler(filters.ALL, handle_non_allowed_users))
 
