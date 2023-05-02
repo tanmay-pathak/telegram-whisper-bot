@@ -1,16 +1,19 @@
 import logging
 import os
 import glob
-from subprocess import Popen, PIPE
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 from gtts import gTTS
+from faster_whisper import WhisperModel
 
 # Setup
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+# Faster-whisper setup
+model_size = "small"
+model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
 # Environment variables
 TOKEN = os.environ.get('TOKEN')
@@ -41,19 +44,16 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     path_to_downloaded_file = './{}'.format(downloaded_filename)
     logging.log(logging.INFO, f'Downloaded file at {path_to_downloaded_file}')
 
-    await transcribe_voice_note(path_to_downloaded_file)
-    await send_transcription_to_user(path_to_downloaded_file, update, context)
+    segments, _ = model.transcribe(path_to_downloaded_file, beam_size=5)
+    segments = list(segments)
+    logging.log(logging.INFO, f'Transcription info: {segments}')
+    transcription = ""
+    for segment in segments:
+        transcription += "%s" % (segment.text)
+    await send_transcription_to_user(transcription, update, context)
     await delete_temp_files()
 
-async def transcribe_voice_note(path_to_file):
-    cmd = 'bash ./convert.sh ' + path_to_file
-    process = Popen(cmd.split(), stdout=PIPE, stderr=PIPE)
-    process.wait()
-
-async def send_transcription_to_user(path_to_file, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    result = open(path_to_file + ".wav.txt", "r")
-    text = result.read()
-    result.close()
+async def send_transcription_to_user(text, update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not text:
         text = 'Could not transcribe. Please try again.'
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_to_message_id=update.message.message_id)
