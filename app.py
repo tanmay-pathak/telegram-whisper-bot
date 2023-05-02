@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 # Faster-whisper setup
-model_size = "large-v2"
+model_size = "small"
 model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
 # Environment variables

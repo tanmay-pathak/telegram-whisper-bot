@@ -31,6 +31,6 @@ Now send a message to your bot. Enjoy!!
 ## Acknowledgements
 
  - [Whisper.cpp - Amazing tool originally used for transcriptions](https://github.com/ggerganov/whisper.cpp)
- - [Faster-Whisper - Amazing + faster - used now for transcriptions](https://github.com/ggerganov/whisper.cpp)
+ - [Faster-Whisper - Amazing + faster - used now for transcriptions](https://github.com/guillaumekln/faster-whisper)
  - [Tony Mamacos - Inspiration](https://github.com/matiassingers/awesome-readme)
 
