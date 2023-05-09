@@ -1,0 +1,1 @@
+Call `timeTaken` function in telegram bot code
