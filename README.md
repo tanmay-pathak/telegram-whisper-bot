@@ -12,6 +12,8 @@ To run this project, you will need to add the following environment variables in
 
 `USERNAMES` = Usernames that are allowed to use this bot in an array format. Example: `['@ExampleUser1', '@ExampleUser2']`
 
+`OPENAI_API_KEY` (optional) = OpenAI's API key if you would like to use their new TTS service instead of the free gTTS.
+
 
 ## Features
 
