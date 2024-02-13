@@ -1,4 +1,3 @@
 python-telegram-bot
-gTTS
-faster-whisper
 openai
+pydub

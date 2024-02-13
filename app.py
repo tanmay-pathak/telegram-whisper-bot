@@ -9,10 +9,8 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from gtts import gTTS
-from faster_whisper import WhisperModel
-from pathlib import Path
 from openai import OpenAI
+from pydub import AudioSegment
 
 # Setup
 logging.basicConfig(
@@ -26,10 +24,6 @@ ALLOWED_USERNAMES = [
     username.strip("'[ ]") for username in os.environ.get("USERNAMES").split(",")
 ]
 
-# Faster-whisper setup
-model_size = "small"
-model = WhisperModel(model_size, device="cpu", compute_type="int8")
-
 if OPENAI_KEY:
     client = OpenAI()
 
@@ -41,56 +35,59 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Hi, I am Voice2Type bot. I can translate and transcribe voice notes for you. Send a voice note to start!",
+        text="Hi, I am Voice2Text bot. I can translate and transcribe voice notes for you. Send a voice note to start!",
     )
 
 
 async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(logging.INFO, f"File received from  {update.effective_chat.username}")
-    await update.message.chat.send_action(action="typing")
-    await process_voice_note(update, context)
-
-
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
     logging.log(
-        logging.INFO, f"Text {text} received from {update.effective_chat.username}"
+        logging.INFO, f"Audio/Video received from  {update.effective_chat.username}."
     )
-    await update.message.chat.send_action(action="record_audio")
-    if OPENAI_KEY:
-        speech_file_path = Path(__file__).parent / "file_elevenlabs.mp3"
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=text,
-        )   
-        response.stream_to_file(speech_file_path)
-    else:
-        gTTS(text).save("./file_elevenlabs.mp3")
-    
-    await context.bot.send_voice(
-        chat_id=update.effective_chat.id,
-        voice="./file_elevenlabs.mp3",
-        reply_to_message_id=update.message.message_id,
-    )
+    await update.message.chat.send_action(action="typing")
+    try:
+        await process_voice_note(update, context)
+    except Exception as e:
+        logging.error("An error occurred: %s", e)
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Oops! An error occurred while transcribing. Please try again. {e}",
+            reply_to_message_id=update.message.message_id,
+        )
 
 
 async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_id = update.message.effective_attachment.file_id
     file = await context.bot.get_file(file_id)
 
+    # Download file
+    os.chdir("/app/temp/")
     downloaded_filename = await file.download_to_drive()
-    path_to_downloaded_file = "./{}".format(downloaded_filename)
+    path_to_downloaded_file = "/app/temp/{}".format(downloaded_filename)
     logging.log(logging.INFO, f"Downloaded file at {path_to_downloaded_file}")
 
-    segments, _ = model.transcribe(path_to_downloaded_file, beam_size=5)
-    segments = list(segments)
-    logging.log(logging.INFO, f"Transcription info: {segments}")
-    transcription = ""
-    for segment in segments:
-        transcription += "%s" % (segment.text)
-    await send_transcription_to_user(transcription, update, context)
+    # Convert downloaded file to wav
+    audio = AudioSegment.from_file(path_to_downloaded_file)
+    wav_filename = downloaded_filename.stem + ".wav"
+    path_to_wav_file = "/app/temp/{}".format(wav_filename)
+    audio.export(path_to_wav_file, format="wav")
+    logging.log(logging.INFO, f"Converted to wav {path_to_wav_file}")
+
+    # Transcribe
+    audio_file = open(path_to_wav_file, "rb")
+    transcript = client.audio.transcriptions.create(
+        model="whisper-1", file=audio_file, response_format="text"
+    )
+
     await delete_temp_files()
+
+    await send_transcription_to_user(transcript, update, context)
+
+
+async def delete_temp_files():
+    files = glob.glob("/app/temp/*")
+    for f in files:
+        os.remove(f)
+        logging.log(logging.INFO, f"Deleted file {f}")
 
 
 async def send_transcription_to_user(
@@ -105,16 +102,10 @@ async def send_transcription_to_user(
     )
 
 
-async def delete_temp_files():
-    for file in glob.glob("file_*.oga*"):
-        logging.log(logging.INFO, f"Deleting temp file: {file}")
-        os.remove(file)
-
-
 async def handle_unsupported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
         logging.INFO,
-        f"Unsupported file received from  {update.effective_chat.username}",
+        f"Unsupported file received from {update.effective_chat.username}.",
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -150,15 +141,9 @@ if __name__ == "__main__":
     )
     application.add_handler(
         MessageHandler(
-            (filters.TEXT) & filters.Chat(username=ALLOWED_USERNAMES), handle_text
-        )
-    )
-    application.add_handler(
-        MessageHandler(
             filters.ALL & filters.Chat(username=ALLOWED_USERNAMES),
             handle_unsupported_files,
         )
     )
     application.add_handler(MessageHandler(filters.ALL, handle_non_allowed_users))
-
     application.run_polling()
