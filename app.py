@@ -39,6 +39,36 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(
+        logging.INFO, f"Command /summary entered by {update.effective_chat.username}"
+    )
+
+    replied_message = update.message.reply_to_message.text
+    prompt = f"You are an expert in summarizing given transcripts."
+
+    completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt,
+            },
+            {
+                "role": "user",
+                "content": f'Please summarize the following text: "{replied_message}"',
+            },
+        ],
+    )
+
+    summary = completion.choices[0].message.content.strip()
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"Summary: {summary}",
+    )
+
+
 async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
         logging.INFO, f"Audio/Video received from  {update.effective_chat.username}."
@@ -154,9 +184,11 @@ if __name__ == "__main__":
 
     # Commands
     start_handler = CommandHandler("start", start)
+    summary_handler = CommandHandler("summary", summary)
 
     # add handlers
     application.add_handler(start_handler)
+    application.add_handler(summary_handler)
 
     if len(ALLOWED_USERNAMES) > 0:
         user_filter = filters.ALL

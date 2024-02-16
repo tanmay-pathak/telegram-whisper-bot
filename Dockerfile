@@ -7,9 +7,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-COPY app.py .
-
 RUN pip install -r requirements.txt
+
+COPY app.py .
 
 WORKDIR /app/temp
 
