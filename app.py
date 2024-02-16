@@ -155,20 +155,34 @@ if __name__ == "__main__":
     # Commands
     start_handler = CommandHandler("start", start)
 
-    # Handlers
+    # add handlers
     application.add_handler(start_handler)
-    application.add_handler(
-        MessageHandler(
-            (filters.VOICE | filters.AUDIO | filters.VIDEO)
-            & filters.Chat(username=ALLOWED_USERNAMES),
-            handle_supported_files,
+
+    if len(ALLOWED_USERNAMES) > 0:
+        user_filter = filters.ALL
+        usernames = [x for x in ALLOWED_USERNAMES if isinstance(x, str)]
+        any_ids = [x for x in ALLOWED_USERNAMES if isinstance(x, int)]
+        user_ids = [x for x in any_ids if x > 0]
+        group_ids = [x for x in any_ids if x < 0]
+        user_filter = (
+            filters.User(username=usernames)
+            | filters.User(user_id=user_ids)
+            | filters.Chat(chat_id=group_ids)
         )
-    )
-    application.add_handler(
-        MessageHandler(
-            filters.ALL & filters.Chat(username=ALLOWED_USERNAMES),
-            handle_unsupported_files,
+
+        # Handlers
+        application.add_handler(
+            MessageHandler(
+                (filters.VOICE | filters.AUDIO | filters.VIDEO) & user_filter,
+                handle_supported_files,
+            )
         )
-    )
+        application.add_handler(
+            MessageHandler(
+                filters.ALL & user_filter,
+                handle_unsupported_files,
+            )
+        )
+
     application.add_handler(MessageHandler(filters.ALL, handle_non_allowed_users))
     application.run_polling()
