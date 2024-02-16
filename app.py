@@ -72,15 +72,40 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     audio.export(path_to_wav_file, format="wav")
     logging.log(logging.INFO, f"Converted to wav {path_to_wav_file}")
 
-    # Transcribe
-    audio_file = open(path_to_wav_file, "rb")
-    transcript = client.audio.transcriptions.create(
-        model="whisper-1", file=audio_file, response_format="text"
-    )
+    # Split audio into 1-minute chunks
+    audio_chunks = split_audio_into_chunks(path_to_wav_file)
+
+    # Transcribe each chunk and save the text together
+    transcriptions = []
+    for i, chunk in enumerate(audio_chunks):
+        chunk.export(f"/app/temp/chunk{i}.wav", format="wav")
+        audio_file = open(f"/app/temp/chunk{i}.wav", "rb")
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1", file=audio_file, response_format="text"
+        )
+        transcriptions.append(transcript)
+
+    transcript_text = " ".join(transcriptions)
 
     await delete_temp_files()
 
-    await send_transcription_to_user(transcript, update, context)
+    await send_transcription_to_user(transcript_text, update, context)
+
+
+def split_audio_into_chunks(path_to_wav_file):
+    audio = AudioSegment.from_wav(path_to_wav_file)
+    length_audio = len(audio)
+    start = 0
+    # In milliseconds, this is approximately equal to 1 minute.
+    threshold = 60000
+    audio_chunks = []
+
+    while start < length_audio:
+        chunk = audio[start : start + threshold]
+        audio_chunks.append(chunk)
+        start += threshold
+
+    return audio_chunks
 
 
 async def delete_temp_files():
