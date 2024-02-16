@@ -27,3 +27,4 @@ jobs:
         context: .
         push: true
         tags: tanmaypathak/telegram-whisper-bot:latest
+        platforms: linux/amd64,linux/arm64
