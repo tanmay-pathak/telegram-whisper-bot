@@ -11,8 +11,10 @@ from telegram.ext import (
 )
 from openai import OpenAI
 from pydub import AudioSegment
+from telegram.constants import ParseMode
+import json
 
-# Setup
+# Setup logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
@@ -27,37 +29,49 @@ ALLOWED_USERNAMES = [
 if OPENAI_KEY:
     client = OpenAI()
 
+HELP_MESSAGE = """I am Voice2Text bot. I can transcribe, translate, and summarize voice notes for you. Send a voice note to start!
 
-# Functions
+You can reply to a transcript with the following commands:
+⚪ /important – Get the Title, Summary, Important Points, Follow Up Questions, Next Steps and Action Items from a transcript.
+⚪ /summary – Get the Summary from a transcript.
+⚪ /todo – Get the TODO items from a transcript.
+"""
+
+
+# Function to handle /start command. It sends a welcome message to the user.
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
         logging.INFO, f"Command /start entered by {update.effective_chat.username}"
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Hi, I am Voice2Text bot. I can translate and transcribe voice notes for you. Send a voice note to start!",
+        text=HELP_MESSAGE,
     )
 
 
+# Function to handle /summary command. It sends a summary of the transcript being replied to, to the user.
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
         logging.INFO, f"Command /summary entered by {update.effective_chat.username}"
     )
 
     replied_message = update.message.reply_to_message.text
-    prompt = f"You are an expert in summarizing given transcripts."
+    if not replied_message:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please reply to a message with /summary to get a summary of the transcript.",
+        )
+        return
 
+    await update.message.chat.send_action(action="typing")
     completion = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {
                 "role": "system",
-                "content": prompt,
+                "content": "The following is a transcript of a voice message. Extract a title and summary from it.",
             },
-            {
-                "role": "user",
-                "content": f'Please summarize the following text: "{replied_message}"',
-            },
+            {"role": "user", "content": replied_message},
         ],
     )
 
@@ -65,7 +79,110 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"Summary: {summary}",
+        text=f"{summary}",
+        reply_to_message_id=update.message.message_id,
+    )
+
+
+# Function to handle /important command. It extracts the important points from the transcript being replied to, to the user.
+async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(
+        logging.INFO, f"Command /important entered by {update.effective_chat.username}"
+    )
+
+    replied_message = update.message.reply_to_message.text
+    if not replied_message:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please reply to a message with /important to run this command.",
+        )
+        return
+
+    await update.message.chat.send_action(action="typing")
+    completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": "The following is a transcript of a voice message. Extract a title, a short summary, any important points (if present), any follow up questions to ask the speaker (if present), any next steps for both parties and action items from it and answer in JSON in this format: {title: string, summary: string, importantPoints: [string, string, ...] | NULL, followUpQuestions: [string, string, ...] | NULL, nextSteps: [string, string, ...] | NULL, actionItems: [string, string, ...] | NULL}",
+            },
+            {"role": "user", "content": replied_message},
+        ],
+    )
+
+    response_content = completion.choices[0].message.content.strip()
+    response_dict = json.loads(response_content)
+
+    title = response_dict.get("title")
+    summary = response_dict.get("summary")
+    important_points = response_dict.get("importantPoints")
+    follow_up_questions = response_dict.get("followUpQuestions")
+    next_steps = response_dict.get("nextSteps")
+    action_items = response_dict.get("actionItems")
+
+    message = f"**Title:** {title}\n\n**Summary:** {summary}\n"
+
+    if important_points:
+        message += "\n\n**Important Points:**\n" + "\n".join(
+            f"- {point}" for point in important_points
+        )
+
+    if follow_up_questions:
+        message += "\n\n**Follow Up Questions:**\n" + "\n".join(
+            f"- {question}" for question in follow_up_questions
+        )
+
+    if next_steps:
+        message += "\n\n**Next Steps:**\n" + "\n".join(
+            f"- {step}" for step in next_steps
+        )
+
+    if action_items:
+        message += "\n\n**Action Items:**\n" + "\n".join(
+            f"- {item}" for item in action_items
+        )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=message,
+        reply_to_message_id=update.message.message_id,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# Function to handle the /todo command. It creates action items from the text being replied to.
+async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(
+        logging.INFO, f"Command /todo entered by {update.effective_chat.username}"
+    )
+
+    replied_message = update.message.reply_to_message.text
+    if not replied_message:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please reply to a message with /todo to get the TODO items from the transcript.",
+        )
+        return
+
+    await update.message.chat.send_action(action="typing")
+    completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": "The following is a transcript of a voice message. Extract action items from it. Respond with a list of action items, separated by commas.",
+            },
+            {"role": "user", "content": replied_message},
+        ],
+    )
+
+    action_items = completion.choices[0].message.content.split(",")
+    action_items_text = "\n".join(action_items)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"Action Items:\n{action_items_text}",
+        reply_to_message_id=update.message.message_id,
     )
 
 
@@ -152,8 +269,9 @@ async def send_transcription_to_user(
         text = "Could not transcribe. Please try again."
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=text,
+        text=f"<i>{text}</i>",
         reply_to_message_id=update.message.message_id,
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -184,11 +302,17 @@ if __name__ == "__main__":
 
     # Commands
     start_handler = CommandHandler("start", start)
+    help_handler = CommandHandler("help", start)
     summary_handler = CommandHandler("summary", summary)
+    todo_handler = CommandHandler("todo", todo)
+    important_handler = CommandHandler("important", important)
 
     # add handlers
     application.add_handler(start_handler)
+    application.add_handler(help_handler)
     application.add_handler(summary_handler)
+    application.add_handler(todo_handler)
+    application.add_handler(important_handler)
 
     if len(ALLOWED_USERNAMES) > 0:
         user_filter = filters.ALL
