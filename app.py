@@ -16,7 +16,7 @@ import json
 
 # Setup logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
 )
 
 # Environment variables
@@ -43,7 +43,7 @@ You can reply to a transcript with the following commands:
 # Function to handle /start command. It sends a welcome message to the user.
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Command /start entered by {update.effective_chat.username}"
+        logging.WARNING, f"Command /start entered by {update.effective_chat.username}"
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -54,7 +54,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /summary command. It sends a summary of the transcript being replied to, to the user.
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Command /summary entered by {update.effective_chat.username}"
+        logging.WARNING, f"Command /summary entered by {update.effective_chat.username}"
     )
 
     replied_message = update.message.reply_to_message
@@ -92,7 +92,7 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /hinglish command. It converts the text being replied to, to Hinglish.
 async def hinglish(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Command /hinglish entered by {update.effective_chat.username}"
+        logging.WARNING, f"Command /hinglish entered by {update.effective_chat.username}"
     )
 
     replied_message = update.message.reply_to_message
@@ -130,7 +130,7 @@ async def hinglish(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /english command. It converts the text being replied to, to English.
 async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Command /english entered by {update.effective_chat.username}"
+        logging.WARNING, f"Command /english entered by {update.effective_chat.username}"
     )
 
     replied_message = update.message.reply_to_message
@@ -168,7 +168,7 @@ async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /important command. It extracts the important points from the transcript being replied to, to the user.
 async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Command /important entered by {update.effective_chat.username}"
+        logging.WARNING, f"Command /important entered by {update.effective_chat.username}"
     )
 
     replied_message = update.message.reply_to_message
@@ -237,7 +237,7 @@ async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle the /todo command. It creates action items from the text being replied to.
 async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Command /todo entered by {update.effective_chat.username}"
+        logging.WARNING, f"Command /todo entered by {update.effective_chat.username}"
     )
 
     replied_message = update.message.reply_to_message
@@ -275,7 +275,7 @@ async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO, f"Audio/Video received from  {update.effective_chat.username}."
+        logging.WARNING, f"Audio/Video received from  {update.effective_chat.username}."
     )
     await update.message.chat.send_action(action="typing")
     try:
@@ -297,14 +297,14 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     os.chdir("/app/temp/")
     downloaded_filename = await file.download_to_drive()
     path_to_downloaded_file = "/app/temp/{}".format(downloaded_filename)
-    logging.log(logging.INFO, f"Downloaded file at {path_to_downloaded_file}")
+    logging.log(logging.WARNING, f"Downloaded file at {path_to_downloaded_file}")
 
     # Convert downloaded file to wav
     audio = AudioSegment.from_file(path_to_downloaded_file)
     wav_filename = downloaded_filename.stem + ".wav"
     path_to_wav_file = "/app/temp/{}".format(wav_filename)
     audio.export(path_to_wav_file, format="wav")
-    logging.log(logging.INFO, f"Converted to wav {path_to_wav_file}")
+    logging.log(logging.WARNING, f"Converted to wav {path_to_wav_file}")
 
     # Split audio into 1-minute chunks
     audio_chunks = split_audio_into_chunks(path_to_wav_file)
@@ -346,7 +346,7 @@ async def delete_temp_files():
     files = glob.glob("/app/temp/*")
     for f in files:
         os.remove(f)
-        logging.log(logging.INFO, f"Deleted file {f}")
+        logging.log(logging.WARNING, f"Deleted file {f}")
 
 
 async def send_transcription_to_user(
@@ -364,7 +364,7 @@ async def send_transcription_to_user(
 
 async def handle_unsupported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO,
+        logging.WARNING,
         f"Unsupported file received from {update.effective_chat.username}.",
     )
     await context.bot.send_message(
@@ -375,7 +375,7 @@ async def handle_unsupported_files(update: Update, context: ContextTypes.DEFAULT
 
 async def handle_non_allowed_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.INFO,
+        logging.WARNING,
         f"Message received from non-allowed user = {update.effective_chat.username}",
     )
     await context.bot.send_message(
