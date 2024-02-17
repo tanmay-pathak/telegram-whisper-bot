@@ -9,7 +9,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydub import AudioSegment
 from telegram.constants import ParseMode
 import json
@@ -23,11 +23,11 @@ logging.basicConfig(
 TOKEN = os.environ.get("TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 ALLOWED_USERNAMES = [
-    username.strip("'[ ]") for username in os.environ.get("USERNAMES").split(",")
+    username.strip("'\"[ ]") for username in os.environ.get("USERNAMES").split(",")
 ]
 
 if OPENAI_KEY:
-    client = OpenAI()
+    client = AsyncOpenAI()
 
 HELP_MESSAGE = """I am Voice2Text bot. I can transcribe, translate, and summarize voice notes for you. Send a voice note to start!
 
@@ -35,6 +35,7 @@ You can reply to a transcript with the following commands:
 ⚪ /important – Get the Title, Summary, Important Points, Follow Up Questions, Next Steps and Action Items from a transcript.
 ⚪ /summary – Get the Summary from a transcript.
 ⚪ /todo – Get the TODO items from a transcript.
+⚪ /hinglish – Convert text to Hinglish.
 """
 
 
@@ -55,16 +56,17 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.INFO, f"Command /summary entered by {update.effective_chat.username}"
     )
 
-    replied_message = update.message.reply_to_message.text
+    replied_message = update.message.reply_to_message
     if not replied_message:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Please reply to a message with /summary to get a summary of the transcript.",
         )
         return
+    replied_message = update.message.reply_to_message.text
 
     await update.message.chat.send_action(action="typing")
-    completion = client.chat.completions.create(
+    completion = await client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {
@@ -73,6 +75,8 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             {"role": "user", "content": replied_message},
         ],
+        max_tokens=1000,
+        temperature=0.6,
     )
 
     summary = completion.choices[0].message.content.strip()
@@ -84,22 +88,61 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+# Function to handle /hinglish command. It converts the text being replied to, to Hinglish.
+async def hinglish(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.log(
+        logging.INFO, f"Command /hinglish entered by {update.effective_chat.username}"
+    )
+
+    replied_message = update.message.reply_to_message
+    if not replied_message:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please reply to a message with /hinglish to translate the text to Hinglish.",
+        )
+        return
+    replied_message = update.message.reply_to_message.text
+
+    await update.message.chat.send_action(action="typing")
+    completion = await client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": "The following is a transcript of a voice message. Convert it word to word in Hinglish.",
+            },
+            {"role": "user", "content": replied_message},
+        ],
+        max_tokens=1000,
+        temperature=0.6,
+    )
+
+    translated_text = completion.choices[0].message.content.strip()
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"{translated_text}",
+        reply_to_message_id=update.message.message_id,
+    )
+
+
 # Function to handle /important command. It extracts the important points from the transcript being replied to, to the user.
 async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
         logging.INFO, f"Command /important entered by {update.effective_chat.username}"
     )
 
-    replied_message = update.message.reply_to_message.text
+    replied_message = update.message.reply_to_message
     if not replied_message:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Please reply to a message with /important to run this command.",
         )
         return
+    replied_message = update.message.reply_to_message.text
 
     await update.message.chat.send_action(action="typing")
-    completion = client.chat.completions.create(
+    completion = await client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {
@@ -108,6 +151,8 @@ async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             {"role": "user", "content": replied_message},
         ],
+        max_tokens=1000,
+        temperature=0.6,
     )
 
     response_content = completion.choices[0].message.content.strip()
@@ -156,16 +201,17 @@ async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.INFO, f"Command /todo entered by {update.effective_chat.username}"
     )
 
-    replied_message = update.message.reply_to_message.text
+    replied_message = update.message.reply_to_message
     if not replied_message:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Please reply to a message with /todo to get the TODO items from the transcript.",
         )
         return
+    replied_message = update.message.reply_to_message.text
 
     await update.message.chat.send_action(action="typing")
-    completion = client.chat.completions.create(
+    completion = await client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {
@@ -174,6 +220,8 @@ async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             {"role": "user", "content": replied_message},
         ],
+        max_tokens=1000,
+        temperature=0.6,
     )
 
     action_items = completion.choices[0].message.content.split(",")
@@ -227,7 +275,7 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for i, chunk in enumerate(audio_chunks):
         chunk.export(f"/app/temp/chunk{i}.wav", format="wav")
         audio_file = open(f"/app/temp/chunk{i}.wav", "rb")
-        transcript = client.audio.transcriptions.create(
+        transcript = await client.audio.transcriptions.create(
             model="whisper-1", file=audio_file, response_format="text"
         )
         transcriptions.append(transcript)
@@ -306,6 +354,7 @@ if __name__ == "__main__":
     summary_handler = CommandHandler("summary", summary)
     todo_handler = CommandHandler("todo", todo)
     important_handler = CommandHandler("important", important)
+    hinglish_handler = CommandHandler("hinglish", hinglish)
 
     # add handlers
     application.add_handler(start_handler)
@@ -313,6 +362,7 @@ if __name__ == "__main__":
     application.add_handler(summary_handler)
     application.add_handler(todo_handler)
     application.add_handler(important_handler)
+    application.add_handler(hinglish_handler)
 
     if len(ALLOWED_USERNAMES) > 0:
         user_filter = filters.ALL
