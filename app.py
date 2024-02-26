@@ -13,6 +13,11 @@ from openai import AsyncOpenAI
 from pydub import AudioSegment
 from telegram.constants import ParseMode
 import json
+from deepgram import (
+    DeepgramClient,
+    PrerecordedOptions,
+    FileSource,
+)
 
 # Setup logging
 logging.basicConfig(
@@ -22,12 +27,15 @@ logging.basicConfig(
 # Environment variables
 TOKEN = os.environ.get("TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
+DEEPGRAM_KEY = os.environ.get("DEEPGRAM_API_KEY")
 ALLOWED_USERNAMES = [
     username.strip("'\"[ ]") for username in os.environ.get("USERNAMES").split(",")
 ]
 
 if OPENAI_KEY:
     client = AsyncOpenAI()
+if DEEPGRAM_KEY:
+    deepgram = DeepgramClient(DEEPGRAM_KEY)
 
 HELP_MESSAGE = """I am Voice2Text bot. I can transcribe, translate, and summarize voice notes for you. Send a voice note to start!
 
@@ -92,7 +100,8 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /hinglish command. It converts the text being replied to, to Hinglish.
 async def hinglish(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.WARNING, f"Command /hinglish entered by {update.effective_chat.username}"
+        logging.WARNING,
+        f"Command /hinglish entered by {update.effective_chat.username}",
     )
 
     replied_message = update.message.reply_to_message
@@ -168,7 +177,8 @@ async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /important command. It extracts the important points from the transcript being replied to, to the user.
 async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.WARNING, f"Command /important entered by {update.effective_chat.username}"
+        logging.WARNING,
+        f"Command /important entered by {update.effective_chat.username}",
     )
 
     replied_message = update.message.reply_to_message
@@ -306,24 +316,25 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     audio.export(path_to_wav_file, format="wav")
     logging.log(logging.WARNING, f"Converted to wav {path_to_wav_file}")
 
-    # Split audio into 1-minute chunks
-    audio_chunks = split_audio_into_chunks(path_to_wav_file)
+    with open(path_to_wav_file, "rb") as file:
+        buffer_data = file.read()
 
-    # Transcribe each chunk and save the text together
-    transcriptions = []
-    for i, chunk in enumerate(audio_chunks):
-        chunk.export(f"/app/temp/chunk{i}.wav", format="wav")
-        audio_file = open(f"/app/temp/chunk{i}.wav", "rb")
-        transcript = await client.audio.transcriptions.create(
-            model="whisper-1", file=audio_file, response_format="text"
-        )
-        transcriptions.append(transcript)
+    payload: FileSource = {
+        "buffer": buffer_data,
+    }
 
-    transcript_text = " ".join(transcriptions)
+    options = PrerecordedOptions(smart_format=True, model="whisper", summarize="v2")
+
+    file_response = deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
+    res = json.loads(file_response.to_json(indent=4))
+    transcript = (
+        res.get("results").get("channels")[0].get("alternatives")[0].get("transcript")
+    )
+    summary = res.get("results").get("summary").get("short")
 
     await delete_temp_files()
-
-    await send_transcription_to_user(transcript_text, update, context)
+    await send_transcription_to_user(f"Transcript:\n{transcript}", update, context)
+    await send_transcription_to_user(f"Summary:\n{summary}", update, context)
 
 
 def split_audio_into_chunks(path_to_wav_file):
