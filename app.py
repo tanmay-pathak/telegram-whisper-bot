@@ -309,32 +309,23 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     path_to_downloaded_file = "/app/temp/{}".format(downloaded_filename)
     logging.log(logging.WARNING, f"Downloaded file at {path_to_downloaded_file}")
 
-    # Convert downloaded file to wav
-    audio = AudioSegment.from_file(path_to_downloaded_file)
-    wav_filename = downloaded_filename.stem + ".wav"
-    path_to_wav_file = "/app/temp/{}".format(wav_filename)
-    audio.export(path_to_wav_file, format="wav")
-    logging.log(logging.WARNING, f"Converted to wav {path_to_wav_file}")
-
-    with open(path_to_wav_file, "rb") as file:
+    with open(path_to_downloaded_file, "rb") as file:
         buffer_data = file.read()
 
     payload: FileSource = {
         "buffer": buffer_data,
     }
 
-    options = PrerecordedOptions(smart_format=True, model="whisper", summarize="v2")
+    options = PrerecordedOptions(smart_format=True, model="whisper")
 
     file_response = deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
     res = json.loads(file_response.to_json(indent=4))
     transcript = (
         res.get("results").get("channels")[0].get("alternatives")[0].get("transcript")
     )
-    summary = res.get("results").get("summary").get("short")
 
     await delete_temp_files()
     await send_transcription_to_user(f"Transcript:\n{transcript}", update, context)
-    await send_transcription_to_user(f"Summary:\n{summary}", update, context)
 
 
 def split_audio_into_chunks(path_to_wav_file):
