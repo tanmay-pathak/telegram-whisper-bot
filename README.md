@@ -1,16 +1,16 @@
 # Voice2Text Telegram Bot
 
-A telegram bot that transcribes voice to text. It also supports further processing of the transcript.
+A telegram bot that transcribes and translates voice to text. It also supports further processing of the transcript.
 
 ## Features
 
 - Transcribe speech to text
+- Translate text to English
 - Summarize a transcript
 - Extract important points from a transcript
 - Create action items from a transcript
 - Generate follow up questions from a transcript
 - Determine next steps
-- Translate text to English
 
 ## Environment Variables
 
@@ -47,6 +47,7 @@ services:
       - TOKEN="YOUR_BOT_TOKEN"
       - USERNAMES=[]
       - OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
+      - OPENAI_MODEL="gpt-3.5-turbo-0125"
 ```
 
 Now send a message to your bot. Enjoy!!
