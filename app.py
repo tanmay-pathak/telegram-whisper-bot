@@ -89,7 +89,7 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # Function to handle /important command. It extracts the important points from the transcript being replied to, to the user.
-async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_important_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
         logging.WARNING,
         f"Command /important entered by {update.effective_chat.username}",
@@ -102,9 +102,30 @@ async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text="Please reply to a message with /important to run this command.",
         )
         return
+
+    placeholder_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"...",
+        reply_to_message_id=update.message.message_id,
+    )
+    await update.message.chat.send_action(action="typing")
+
+    try:
+        await get_imporant_details(update, context, placeholder_message)
+    except Exception as e:
+        logging.error("An error occurred: %s", e)
+        await context.bot.edit_message_text(
+            chat_id=placeholder_message.chat_id,
+            text=f"Oops! An error occurred while handling important command. Please try again. {e}",
+            message_id=placeholder_message.message_id,
+        )
+
+
+async def get_imporant_details(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, placeholder_message: Update
+):
     replied_message = update.message.reply_to_message.text
 
-    await update.message.chat.send_action(action="typing")
     completion = await client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -150,10 +171,10 @@ async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"- {item}" for item in action_items
         )
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
+    await context.bot.edit_message_text(
+        chat_id=placeholder_message.chat_id,
+        message_id=placeholder_message.message_id,
         text=message,
-        reply_to_message_id=update.message.message_id,
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -201,7 +222,11 @@ async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_T
     logging.log(
         logging.WARNING, f"Audio/Video received from  {update.effective_chat.username}."
     )
-    placeholder_message = await update.message.reply_text("...")
+    placeholder_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"...",
+        reply_to_message_id=update.message.message_id,
+    )
     await update.message.chat.send_action(action="typing")
     try:
         await process_voice_note(update, context, placeholder_message)
@@ -322,7 +347,7 @@ if __name__ == "__main__":
     help_handler = CommandHandler("help", start)
     summary_handler = CommandHandler("summary", summary)
     todo_handler = CommandHandler("todo", todo)
-    important_handler = CommandHandler("important", important)
+    important_handler = CommandHandler("important", handle_important_command)
 
     # add handlers
     application.add_handler(start_handler)
