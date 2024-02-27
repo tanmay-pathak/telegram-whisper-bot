@@ -1,16 +1,16 @@
 # Voice2Text Telegram Bot
 
-A telegram bot that transcribes voice to text. It also supports further processing of the transcript.
+A telegram bot that transcribes and translates voice to text. It also supports further processing of the transcript.
 
 ## Features
 
 - Transcribe speech to text
+- Translate text to English
 - Summarize a transcript
 - Extract important points from a transcript
 - Create action items from a transcript
 - Generate follow up questions from a transcript
 - Determine next steps
-- Translate text to English
 
 ## Environment Variables
 
@@ -20,7 +20,9 @@ To run this project, you will need to add the following environment variables in
 
 `USERNAMES` = Usernames and/or UserIDs that are allowed to use this bot in an array format. Example: `['@ExampleUser1', '@ExampleUser2', 12345678]`
 
-`OPENAI_API_KEY` = OpenAI's API key to use Whisper to convert speech to text and process transcript with `gpt-3.5-turbo` model.
+`OPENAI_API_KEY` = OpenAI's API key to use Whisper to convert speech to text and process transcripts.
+
+`OPENAI_MODEL` = OpenAI model to use for processing transcripts.
 
 ## Run by building an image locally
 
@@ -45,6 +47,7 @@ services:
       - TOKEN="YOUR_BOT_TOKEN"
       - USERNAMES=[]
       - OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
+      - OPENAI_MODEL="gpt-3.5-turbo-0125"
 ```
 
 Now send a message to your bot. Enjoy!!
