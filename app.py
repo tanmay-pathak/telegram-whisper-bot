@@ -201,19 +201,22 @@ async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_T
     logging.log(
         logging.WARNING, f"Audio/Video received from  {update.effective_chat.username}."
     )
+    placeholder_message = await update.message.reply_text("...")
     await update.message.chat.send_action(action="typing")
     try:
-        await process_voice_note(update, context)
+        await process_voice_note(update, context, placeholder_message)
     except Exception as e:
         logging.error("An error occurred: %s", e)
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+        await context.bot.edit_message_text(
+            chat_id=placeholder_message.chat_id,
             text=f"Oops! An error occurred while transcribing. Please try again. {e}",
-            reply_to_message_id=update.message.message_id,
+            message_id=placeholder_message.message_id,
         )
 
 
-async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def process_voice_note(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, placeholder_message: Update
+):
     file_id = update.message.effective_attachment.file_id
     file = await context.bot.get_file(file_id)
 
@@ -246,8 +249,11 @@ async def process_voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE)
     transcript_text = " ".join(transcriptions)
 
     await delete_temp_files()
-
-    await send_transcription_to_user(transcript_text, update, context)
+    await context.bot.edit_message_text(
+        transcript_text,
+        chat_id=placeholder_message.chat_id,
+        message_id=placeholder_message.message_id,
+    )
 
 
 def split_audio_into_chunks(path_to_wav_file):
