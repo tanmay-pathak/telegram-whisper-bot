@@ -25,6 +25,7 @@ OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 ALLOWED_USERNAMES = [
     username.strip("'\"[ ]") for username in os.environ.get("USERNAMES").split(",")
 ]
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
 
 if OPENAI_KEY:
     client = AsyncOpenAI()
@@ -67,7 +68,7 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.chat.send_action(action="typing")
     completion = await client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=OPENAI_MODEL,
         messages=[
             {
                 "role": "system",
@@ -105,7 +106,7 @@ async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.chat.send_action(action="typing")
     completion = await client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=OPENAI_MODEL,
         messages=[
             {
                 "role": "system",
@@ -144,7 +145,7 @@ async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.chat.send_action(action="typing")
     completion = await client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=OPENAI_MODEL,
         messages=[
             {
                 "role": "system",
@@ -213,7 +214,7 @@ async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.chat.send_action(action="typing")
     completion = await client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=OPENAI_MODEL,
         messages=[
             {
                 "role": "system",

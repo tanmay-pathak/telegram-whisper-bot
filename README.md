@@ -20,7 +20,9 @@ To run this project, you will need to add the following environment variables in
 
 `USERNAMES` = Usernames and/or UserIDs that are allowed to use this bot in an array format. Example: `['@ExampleUser1', '@ExampleUser2', 12345678]`
 
-`OPENAI_API_KEY` = OpenAI's API key to use Whisper to convert speech to text and process transcript with `gpt-3.5-turbo` model.
+`OPENAI_API_KEY` = OpenAI's API key to use Whisper to convert speech to text and process transcripts.
+
+`OPENAI_MODEL` = OpenAI model to use for processing transcripts.
 
 ## Run by building an image locally
 
