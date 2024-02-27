@@ -35,7 +35,6 @@ You can reply to a transcript with the following commands:
 ⚪ /important – Get the Title, Summary, Important Points, Follow Up Questions, Next Steps and Action Items from a transcript.
 ⚪ /summary – Get the Summary from a transcript.
 ⚪ /todo – Get the TODO items from a transcript.
-⚪ /hinglish – Convert text to Hinglish.
 ⚪ /english – Convert text to English.
 """
 
@@ -89,44 +88,6 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# Function to handle /hinglish command. It converts the text being replied to, to Hinglish.
-async def hinglish(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.log(
-        logging.WARNING, f"Command /hinglish entered by {update.effective_chat.username}"
-    )
-
-    replied_message = update.message.reply_to_message
-    if not replied_message:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Please reply to a message with /hinglish to translate the text to Hinglish.",
-        )
-        return
-    replied_message = update.message.reply_to_message.text
-
-    await update.message.chat.send_action(action="typing")
-    completion = await client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {
-                "role": "system",
-                "content": "The following is a transcript of a voice message. Convert it word to word to Hinglish. Ensure that the output is in Hinglish and not in Hindi or English.",
-            },
-            {"role": "user", "content": replied_message},
-        ],
-        max_tokens=1000,
-        temperature=0.6,
-    )
-
-    translated_text = completion.choices[0].message.content.strip()
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"{translated_text}",
-        reply_to_message_id=update.message.message_id,
-    )
-
-
 # Function to handle /english command. It converts the text being replied to, to English.
 async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
@@ -168,7 +129,8 @@ async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Function to handle /important command. It extracts the important points from the transcript being replied to, to the user.
 async def important(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.log(
-        logging.WARNING, f"Command /important entered by {update.effective_chat.username}"
+        logging.WARNING,
+        f"Command /important entered by {update.effective_chat.username}",
     )
 
     replied_message = update.message.reply_to_message
@@ -393,7 +355,6 @@ if __name__ == "__main__":
     summary_handler = CommandHandler("summary", summary)
     todo_handler = CommandHandler("todo", todo)
     important_handler = CommandHandler("important", important)
-    hinglish_handler = CommandHandler("hinglish", hinglish)
     english_handler = CommandHandler("english", english)
 
     # add handlers
@@ -402,7 +363,6 @@ if __name__ == "__main__":
     application.add_handler(summary_handler)
     application.add_handler(todo_handler)
     application.add_handler(important_handler)
-    application.add_handler(hinglish_handler)
     application.add_handler(english_handler)
 
     if len(ALLOWED_USERNAMES) > 0:
