@@ -10,7 +10,6 @@ A telegram bot that transcribes voice to text. It also supports further processi
 - Create action items from a transcript
 - Generate follow up questions from a transcript
 - Determine next steps
-- Translate text to Hinglish
 - Translate text to English
 
 ## Environment Variables
