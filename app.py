@@ -249,14 +249,14 @@ async def process_voice_note(
     os.chdir("/app/temp/")
     downloaded_filename = await file.download_to_drive()
     path_to_downloaded_file = "/app/temp/{}".format(downloaded_filename)
-    logging.log(logging.WARNING, f"Downloaded file at {path_to_downloaded_file}")
+    logging.log(logging.INFO, f"Downloaded file at {path_to_downloaded_file}")
 
     # Convert downloaded file to wav
     audio = AudioSegment.from_file(path_to_downloaded_file)
     wav_filename = downloaded_filename.stem + ".wav"
     path_to_wav_file = "/app/temp/{}".format(wav_filename)
     audio.export(path_to_wav_file, format="wav")
-    logging.log(logging.WARNING, f"Converted to wav {path_to_wav_file}")
+    logging.log(logging.INFO, f"Converted to wav {path_to_wav_file}")
 
     # Split audio into 1-minute chunks
     audio_chunks = split_audio_into_chunks(path_to_wav_file)
@@ -301,7 +301,7 @@ async def delete_temp_files():
     files = glob.glob("/app/temp/*")
     for f in files:
         os.remove(f)
-        logging.log(logging.WARNING, f"Deleted file {f}")
+        logging.log(logging.INFO, f"Deleted file {f}")
 
 
 async def send_transcription_to_user(
