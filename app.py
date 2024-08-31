@@ -13,6 +13,7 @@ from openai import AsyncOpenAI
 from pydub import AudioSegment
 from telegram.constants import ParseMode
 import json
+from pydantic import BaseModel
 
 # Setup logging
 logging.basicConfig(
@@ -48,6 +49,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+class Summary(BaseModel):
+    summary: str
+
+
 # Function to handle /summary command. It sends a summary of the transcript being replied to, to the user.
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning(f"Command /summary entered by {update.effective_chat.username}")
@@ -62,7 +67,7 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     replied_message = update.message.reply_to_message.text
 
     await update.message.chat.send_action(action="typing")
-    completion = await client.chat.completions.create(
+    completion = await client.beta.chat.completions.parse(
         model=OPENAI_MODEL,
         messages=[
             {
@@ -71,15 +76,14 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             {"role": "user", "content": replied_message},
         ],
-        max_tokens=1000,
-        temperature=0.6,
+        response_format=Summary,
     )
 
-    summary = completion.choices[0].message.content.strip()
+    summary_object = completion.choices[0].message.parsed
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"{summary}",
+        text=f"{summary_object.summary}",
         reply_to_message_id=update.message.message_id,
     )
 
@@ -116,33 +120,40 @@ async def handle_important_command(update: Update, context: ContextTypes.DEFAULT
         )
 
 
+class Important(BaseModel):
+    title: str
+    summary: str
+    importantPoints: list[str]
+    followUpQuestions: list[str]
+    nextSteps: list[str]
+    actionItems: list[str]
+
+
 async def get_imporant_details(
     update: Update, context: ContextTypes.DEFAULT_TYPE, placeholder_message: Update
 ):
     replied_message = update.message.reply_to_message.text
 
-    completion = await client.chat.completions.create(
+    completion = await client.beta.chat.completions.parse(
         model=OPENAI_MODEL,
         messages=[
             {
                 "role": "system",
-                "content": "The following is a transcript of a voice message. Extract a title, a short summary, any important points (if present), any follow up questions to ask the speaker (if present), any next steps for both parties and action items from it and answer in JSON in this format: {title: string, summary: string, importantPoints: [string, string, ...] | NULL, followUpQuestions: [string, string, ...] | NULL, nextSteps: [string, string, ...] | NULL, actionItems: [string, string, ...] | NULL}",
+                "content": "The following is a transcript of a voice message. Extract the title, summary, important points, follow up questions, next steps and action items from it.",
             },
             {"role": "user", "content": replied_message},
         ],
-        max_tokens=1000,
-        temperature=0.6,
+        response_format=Important,
     )
 
-    response_content = completion.choices[0].message.content.strip()
-    response_dict = json.loads(response_content)
+    important_object = completion.choices[0].message.parsed
 
-    title = response_dict.get("title")
-    summary = response_dict.get("summary")
-    important_points = response_dict.get("importantPoints")
-    follow_up_questions = response_dict.get("followUpQuestions")
-    next_steps = response_dict.get("nextSteps")
-    action_items = response_dict.get("actionItems")
+    title = important_object.title
+    summary = important_object.summary
+    important_points = important_object.importantPoints
+    follow_up_questions = important_object.followUpQuestions
+    next_steps = important_object.nextSteps
+    action_items = important_object.actionItems
 
     message = f"**Title:** {title}\n\n**Summary:** {summary}\n"
 
@@ -174,6 +185,10 @@ async def get_imporant_details(
     )
 
 
+class Todo(BaseModel):
+    actionItems: list[str]
+
+
 # Function to handle the /todo command. It creates action items from the text being replied to.
 async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning(f"Command /todo entered by {update.effective_chat.username}")
@@ -188,20 +203,21 @@ async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     replied_message = update.message.reply_to_message.text
 
     await update.message.chat.send_action(action="typing")
-    completion = await client.chat.completions.create(
+    completion = await client.beta.chat.completions.parse(
         model=OPENAI_MODEL,
         messages=[
             {
                 "role": "system",
-                "content": "The following is a transcript of a voice message. Extract action items from it. Respond with a list of action items, separated by commas.",
+                "content": "The following is a transcript of a voice message. Extract action items from it.",
             },
             {"role": "user", "content": replied_message},
         ],
-        max_tokens=1000,
-        temperature=0.6,
+        response_format=Todo,
     )
 
-    action_items = completion.choices[0].message.content.split(",")
+    todo_object = completion.choices[0].message.parsed
+
+    action_items = todo_object.actionItems
     action_items_text = "\n".join(action_items)
 
     await context.bot.send_message(
