@@ -47,7 +47,7 @@ services:
       - TOKEN="YOUR_BOT_TOKEN"
       - USERNAMES=[]
       - OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
-      - OPENAI_MODEL="gpt-3.5-turbo-0125"
+      - OPENAI_MODEL="gpt-4o"
 ```
 
 Now send a message to your bot. Enjoy!!
