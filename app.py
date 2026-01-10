@@ -37,6 +37,7 @@ You can reply to a transcript with the following commands:
 ⚪ /important – Get the Title, Summary, Important Points, Follow Up Questions, Next Steps and Action Items from a transcript.
 ⚪ /summary – Get the Summary from a transcript.
 ⚪ /todo – Get the TODO items from a transcript.
+⚪ /english – Translate a transcript to English.
 """
 
 
@@ -51,6 +52,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 class Summary(BaseModel):
     summary: str
+
+
+class Translation(BaseModel):
+    translation: str
 
 
 # Function to handle /summary command. It sends a summary of the transcript being replied to, to the user.
@@ -227,6 +232,55 @@ async def todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+# Function to handle the /english command. It translates text to English.
+async def english(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.warning(f"Command /english entered by {update.effective_chat.username}")
+
+    replied_message = update.message.reply_to_message
+    if not replied_message:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please reply to a message with /english to translate it to English.",
+        )
+        return
+
+    placeholder_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"...",
+        reply_to_message_id=update.message.message_id,
+    )
+    await update.message.chat.send_action(action="typing")
+
+    try:
+        replied_message = update.message.reply_to_message.text
+        completion = await client.beta.chat.completions.parse(
+            model=OPENAI_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Translate the following text to English. Only return the translation, nothing else.",
+                },
+                {"role": "user", "content": replied_message},
+            ],
+            response_format=Translation,
+        )
+
+        translation_object = completion.choices[0].message.parsed
+
+        await context.bot.edit_message_text(
+            chat_id=placeholder_message.chat_id,
+            message_id=placeholder_message.message_id,
+            text=f"{translation_object.translation}",
+        )
+    except Exception as e:
+        logging.error("An error occurred: %s", e)
+        await context.bot.edit_message_text(
+            chat_id=placeholder_message.chat_id,
+            text=f"Oops! An error occurred while translating. Please try again. {e}",
+            message_id=placeholder_message.message_id,
+        )
+
+
 async def handle_supported_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning(f"Audio/Video received from  {update.effective_chat.username}.")
     placeholder_message = await context.bot.send_message(
@@ -345,6 +399,7 @@ if __name__ == "__main__":
     summary_handler = CommandHandler("summary", summary)
     todo_handler = CommandHandler("todo", todo)
     important_handler = CommandHandler("important", handle_important_command)
+    english_handler = CommandHandler("english", english)
 
     # add handlers
     application.add_handler(start_handler)
@@ -352,6 +407,7 @@ if __name__ == "__main__":
     application.add_handler(summary_handler)
     application.add_handler(todo_handler)
     application.add_handler(important_handler)
+    application.add_handler(english_handler)
 
     if len(ALLOWED_USERNAMES) > 0:
         user_filter = filters.ALL

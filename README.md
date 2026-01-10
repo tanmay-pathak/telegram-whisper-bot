@@ -1,10 +1,11 @@
 # Voice2Text Telegram Bot
 
-A telegram bot that transcribes and translates voice to text. It also supports further processing of the transcript.
+A telegram bot that transcribes voice to text with speaker diarization. It also supports further processing of transcripts, including translation to English.
 
 ## Features
 
 - Transcribe speech to text with speaker diarization
+- Translate transcripts to English
 - Summarize a transcript
 - Extract important points from a transcript
 - Create action items from a transcript
