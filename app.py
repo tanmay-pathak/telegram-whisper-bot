@@ -31,7 +31,7 @@ OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
 if OPENAI_KEY:
     client = AsyncOpenAI()
 
-HELP_MESSAGE = """I am Voice2Text bot. I can transcribe, translate, and summarize voice notes for you. Send a voice note to start!
+HELP_MESSAGE = """I am Voice2Text bot. I transcribe voice notes with speaker labels and timestamps. Send a voice note to start!
 
 You can reply to a transcript with the following commands:
 ⚪ /important – Get the Title, Summary, Important Points, Follow Up Questions, Next Steps and Action Items from a transcript.
@@ -265,43 +265,35 @@ async def process_voice_note(
     audio.export(path_to_wav_file, format="wav")
     logging.info(f"Converted to wav {path_to_wav_file}")
 
-    # Split audio into 1-minute chunks
-    audio_chunks = split_audio_into_chunks(path_to_wav_file)
-
-    # Transcribe each chunk and save the text together
-    transcriptions = []
-    for i, chunk in enumerate(audio_chunks):
-        chunk.export(f"/app/temp/chunk{i}.wav", format="wav")
-        audio_file = open(f"/app/temp/chunk{i}.wav", "rb")
-        transcript = await client.audio.translations.create(
-            model="whisper-1", file=audio_file, response_format="text"
+    # Transcribe with speaker diarization (automatic chunking)
+    with open(path_to_wav_file, "rb") as audio_file:
+        transcript = await client.audio.transcriptions.create(
+            model="gpt-4o-transcribe-diarize",
+            file=audio_file,
+            response_format="diarized_json",
+            chunking_strategy="auto"
         )
-        transcriptions.append(transcript)
 
-    transcript_text = " ".join(transcriptions)
+    transcript_text = format_diarized_transcript(transcript)
 
     await delete_temp_files()
     await context.bot.edit_message_text(
         transcript_text,
         chat_id=placeholder_message.chat_id,
         message_id=placeholder_message.message_id,
+        parse_mode=ParseMode.MARKDOWN,
     )
 
 
-def split_audio_into_chunks(path_to_wav_file):
-    audio = AudioSegment.from_wav(path_to_wav_file)
-    length_audio = len(audio)
-    start = 0
-    # In milliseconds, this is approximately equal to 1 minute.
-    threshold = 60000
-    audio_chunks = []
-
-    while start < length_audio:
-        chunk = audio[start : start + threshold]
-        audio_chunks.append(chunk)
-        start += threshold
-
-    return audio_chunks
+def format_diarized_transcript(transcript):
+    """Format diarized JSON response into readable text with speaker labels."""
+    lines = []
+    for segment in transcript.segments:
+        speaker_line = f"Speaker: {segment.speaker} ({segment.start:.1f}s - {segment.end:.1f}s)"
+        lines.append(speaker_line)
+        lines.append(segment.text)
+        lines.append("")  # Empty line for spacing
+    return "\n".join(lines).strip()
 
 
 async def delete_temp_files():

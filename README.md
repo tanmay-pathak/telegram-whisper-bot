@@ -4,8 +4,7 @@ A telegram bot that transcribes and translates voice to text. It also supports f
 
 ## Features
 
-- Transcribe speech to text
-- Translate text to English
+- Transcribe speech to text with speaker diarization
 - Summarize a transcript
 - Extract important points from a transcript
 - Create action items from a transcript
@@ -22,7 +21,9 @@ To run this project, you will need to add the following environment variables in
 
 `OPENAI_API_KEY` = OpenAI's API key to use Whisper to convert speech to text and process transcripts.
 
-`OPENAI_MODEL` = OpenAI model to use for processing transcripts.
+`OPENAI_MODEL` = OpenAI model to use for processing transcripts (chat completions).
+
+Note: Audio transcription uses the `gpt-4o-transcribe-diarize` model for speaker diarization.
 
 ## Run by building an image locally
 
